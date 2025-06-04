@@ -7,13 +7,14 @@ from pydantic import BaseModel
 from api.chat.chat_handler import ChatHandler
 from api.enrich.audio_converter import AudioConverter
 from api.enrich.audio_transcriber import AudioTranscriber
+import azure.cognitiveservices.speech as speechsdk
 
 dotenv.load_dotenv()
 
 app = FastAPI()
 
 chat_handler = ChatHandler()
-audio_transcriber = AudioTranscriber()
+
 
 class ProcessRequest(BaseModel):
     body: str
@@ -22,6 +23,12 @@ class ProcessRequest(BaseModel):
 class ProcessResponse(BaseModel):
     response: str
 
+speech_config = speechsdk.SpeechConfig(
+            subscription=os.environ.get("SPEECH_KEY"),
+            region=os.environ.get("SPEECH_REGION")
+        )
+
+audio_transcriber = AudioTranscriber(speech_config)
 
 @app.post("/api/process")
 async def process(request: ProcessRequest) -> ProcessResponse:
@@ -30,26 +37,9 @@ async def process(request: ProcessRequest) -> ProcessResponse:
 
 @app.post(path="/api/process-audio-file")
 async def process_audio_file(request: UploadFile) -> ProcessResponse:
-    # Write the audio file to disk
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-
-    try:
-        temp_file.write(await request.read())
-        temp_file.close()
-      
-        if request.content_type:
-            if "webm" in request.content_type:
-                temp_wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-
-                # Convert webm to wav
-                AudioConverter.convert_webm_to_wav(temp_file.name, temp_wav_file.name)
-
-                temp_file = temp_wav_file
-
+                
         # Transcribe audio
-        transcribed_audio = await audio_transcriber.transcribe_from_file(
-            temp_file.name
-        )
+        transcribed_audio = await audio_transcriber.transcribe_from_audio()
 
         if len(transcribed_audio) == 0:
             raise HTTPException(
@@ -61,7 +51,12 @@ async def process_audio_file(request: UploadFile) -> ProcessResponse:
             chat_handler.get_chat_response(transcribed_audio).content
         )
 
+        # Set the voice name, refer to https://aka.ms/speech/voices/neural for full list.
+        speech_config.speech_synthesis_voice_name = "en-US-AriaNeural"
+
+        # Uncomment to create a speech synthesizer using the default speaker as audio output.
+
+        #speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
+        #speech_synthesizer.speak_text_async(response_content).get()
+
         return ProcessResponse(response=response_content)
-    finally:
-        if os.path.exists(temp_file.name):
-            os.remove(temp_file.name)

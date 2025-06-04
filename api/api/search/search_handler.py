@@ -61,4 +61,4 @@ class SearchHandler:
         return docs[0].page_content
 
 # Uncomment this to create or add to the vector index in AI search
-#SearchHandler().create_vector_index()
+# SearchHandler().create_vector_index()

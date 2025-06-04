@@ -55,11 +55,13 @@ export default function ChatBox({
   const isRecording = () => status === 'recording';
 
   const onRecordingClick = () => {
-    if (isRecording()) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
+    // Always start a new recording
+    startRecording();
+    
+    // Create an empty audio file to trigger the API immediately
+    const emptyBlob = new Blob([], { type: 'audio/webm' });
+    const emptyFile = new File([emptyBlob], 'initial-audio.webm', { type: 'audio/webm' });
+    audioFileUploaded(emptyFile);
   };
 
   return (
@@ -81,13 +83,10 @@ export default function ChatBox({
               Upload Audio
             </Button>
             <Button
-              leftSection={isRecording() ? <IconMicrophone /> : <IconMicrophoneOff />}
+              leftSection={<IconMicrophone />}
               onClick={onRecordingClick}
             >
-              {isRecording()
-                ? // ? 'Stop Recording" ('.concat(recorderControls.recordingTime.toString(), ')')
-                  'Stop Recording'
-                : 'Start Recording'}
+              Start Recording
             </Button>
           </Group>
           <Group ml="auto">
