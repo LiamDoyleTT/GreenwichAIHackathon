@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from api.chat.chat_handler import ChatHandler
+from api.chat.chat_handler import AgentChatHandler
 from api.enrich.audio_converter import AudioConverter
 from api.enrich.audio_transcriber import AudioTranscriber
 from api.enrich.audit_processor import AuditProcessor
@@ -14,6 +15,7 @@ dotenv.load_dotenv()
 app = FastAPI()
 
 chat_handler = ChatHandler()
+agent_chat_handler = AgentChatHandler()
 audio_transcriber = AudioTranscriber()
 
 class ProcessRequest(BaseModel):
@@ -26,7 +28,8 @@ class ProcessResponse(BaseModel):
 
 @app.post("/api/process")
 async def process(request: ProcessRequest) -> ProcessResponse:
-    response_content = str(chat_handler.get_chat_response(request.body).content)
+    #response_content = str(chat_handler.get_chat_response(request.body).content)
+    response_content = str(agent_chat_handler.get_agentic_chat_response(request.body))
     return ProcessResponse(response=response_content)
 
 @app.post(path="/api/process-audit-file")
