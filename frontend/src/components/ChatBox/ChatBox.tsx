@@ -1,29 +1,27 @@
 import { Button, FileInput, Group, Stack, Textarea } from '@mantine/core';
 import {
   IconClearAll,
-  IconMicrophone,
-  IconMicrophoneOff,
+
   IconSend,
   IconUpload,
 } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
-import { useReactMediaRecorder } from 'react-media-recorder-2';
 
 interface ChatBoxProps {
   textMessageCreated: (message: string) => void;
   chatHistoryCleared: () => void;
-  audioFileUploaded: (file: File | null) => void;
+  auditFileUploaded: (file: File | null) => void;
 }
 
 export default function ChatBox({
   textMessageCreated,
   chatHistoryCleared,
-  audioFileUploaded,
+  auditFileUploaded,
 }: ChatBoxProps) {
   const [message, setMessage] = useState<string>('');
 
   const hiddenFileInput = useRef<HTMLButtonElement>(null);
-  const onAudioFileClick = () => {
+  const onDocFileClick = () => {
     if (hiddenFileInput.current) {
       hiddenFileInput.current.click();
     }
@@ -33,35 +31,7 @@ export default function ChatBox({
     textMessageCreated(message);
     setMessage('');
   };
-
-  const onRecordingComplete = (blobUrl: string, blob: Blob) => {
-    const file = new File([blob], 'audio.wav', {
-      type: blob.type,
-    });
-
-    console.log(blob);
-
-    audioFileUploaded(file);
-  };
-
-  const { status, startRecording, stopRecording } = useReactMediaRecorder({
-    audio: true,
-    blobPropertyBag: {
-      type: 'audio/webm',
-    },
-    onStop: onRecordingComplete,
-  });
-
-  const isRecording = () => status === 'recording';
-
-  const onRecordingClick = () => {
-    if (isRecording()) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
+  
   return (
     <>
       <Stack>
@@ -77,10 +47,10 @@ export default function ChatBox({
             <Button onClick={onNewTextMessage} leftSection={<IconSend />}>
               Send
             </Button>
-            <Button onClick={onAudioFileClick} leftSection={<IconUpload />}>
-              Upload Audio
+            <Button onClick={onDocFileClick} leftSection={<IconUpload />}>
+              Upload Audit
             </Button>
-            <Button
+            {/* <Button
               leftSection={isRecording() ? <IconMicrophone /> : <IconMicrophoneOff />}
               onClick={onRecordingClick}
             >
@@ -88,7 +58,7 @@ export default function ChatBox({
                 ? // ? 'Stop Recording" ('.concat(recorderControls.recordingTime.toString(), ')')
                   'Stop Recording'
                 : 'Start Recording'}
-            </Button>
+            </Button> */}
           </Group>
           <Group ml="auto">
             <Button variant="outline" onClick={chatHistoryCleared} leftSection={<IconClearAll />}>
@@ -97,11 +67,11 @@ export default function ChatBox({
           </Group>
         </Group>
         <FileInput
-          label="Audio File"
-          description="Audio File"
-          placeholder="Audio File"
+          label="Audit File"
+          description="Audit File"
+          placeholder="Audit File"
           style={{ display: 'none' }}
-          onChange={audioFileUploaded}
+          onChange={auditFileUploaded}
           ref={hiddenFileInput}
         />
       </Stack>

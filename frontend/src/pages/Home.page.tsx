@@ -55,10 +55,10 @@ export function HomePage() {
     );
   };
 
-  const audioFileUploaded = (file: File | null) => {
+  const auditFileUploaded = (file: File | null) => {
     setMessages((oldMessages) => [
       ...oldMessages,
-      { message: '🎵 Audio Uploaded...', role: 'person' },
+      { message: 'Audit Uploaded...', role: 'person' },
     ]);
 
     setLoading(true);
@@ -66,7 +66,21 @@ export function HomePage() {
     const formData = new FormData();
     formData.append('request', file);
 
-    sendChatRequest('/api/process-audio-file', {}, formData);
+    sendChatRequest('/api/process-audit-file', {}, formData);
+  };
+
+  const docFileUploaded = (file: File | null) => {
+    setMessages((oldMessages) => [
+      ...oldMessages,
+      { message: 'Doc Uploaded...', role: 'person' },
+    ]);
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append('request', file);
+
+    sendChatRequest('/api/process-doc-file', {}, formData);
   };
 
   const clearChatHistory = () => setMessages([]);
@@ -79,7 +93,7 @@ export function HomePage() {
           <ChatBox
             textMessageCreated={textMessageCreated}
             chatHistoryCleared={clearChatHistory}
-            audioFileUploaded={audioFileUploaded}
+            auditFileUploaded={auditFileUploaded}
           />
         </Box>
       </Stack>

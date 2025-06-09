@@ -5,7 +5,7 @@ export default function Logo() {
   return (
     <Image
       src={logoSvg}
-      alt="Microsoft and Telefónica Tech - Local Government Hackathon"
+      alt="Telefónica Tech - London Fire Brigade Hackathon"
       width={50}
       height={50}
     />

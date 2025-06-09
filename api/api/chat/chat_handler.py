@@ -2,9 +2,10 @@ import os
 from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from api.search.search_handler import SearchHandler
+from api.enrich.audit_processor import AuditProcessor
 
 search_handler = SearchHandler()
-
+audit_processor = AuditProcessor()
 
 class ChatHandler:
     def __init__(self) -> None:
@@ -15,20 +16,28 @@ class ChatHandler:
     def get_chat_response(self, input_text):
 
         search_response = search_handler.get_query_response(input_text)
+        audit_text = audit_processor.get_audit_text()
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
                     "system",
-                    """You are a helpful assistant that is responsible for categorising customer complaint emails. For each complaint you receive you will take the content of the email and categorise it into one of the following categories: 'Roads', 'Planning', 'Rubbish Collection', 'Flytipping'.
-                    You will return your response in a JSON object that contains the following attributes:
-                    - 'category': The category that you have assigned to the complaint.
-                    - 'confidence': A number between 0 and 1 that represents how confident you are in your categorisation.
-                    - 'response': A string that contains the response that you would like to send to the customer.
-
-                    Only return the JSON object. Do not include any additional information.                
+                    """You are a helpful assistant to The London Fire Brigade that is responsible for reviewing uploaded audit documents. An audit document is a review of fire safety compliance according to the Regulatory Reform (Fire Safety) Order 2005. Your task is to read the audit and advise on the following: 
+                    - Are any key items missing from the audit? 
+                    - Are certain audit comments documented under the incorrect section according to the RRO 2005?
+                    - Is the language used in the audit clear and well written english? 
+                    - Are there any comments that are ephemeral or not relevant to the audit?
+                    - Are there any other issues with the audit that would require the attention of a manager or senior auditor? 
                     """,
                 ),
-                ("human", "{input}. Respond using only the information in the following complaints procedures: {information}"),
+                (
+                    "human", 
+                    """{input}. 
+                    This is the information from the audit: {audit_text}.
+
+                    Respond using only information from the following sources: 
+                    - Information from the Regulatory Reform Order 2005, which is available online
+                    - The relevant internal documentaion and guidelines: {information}
+                    """),
             ]
         )
 
@@ -36,7 +45,8 @@ class ChatHandler:
         response = chain.invoke(
             {
                 "input": input_text,
-                "information": search_response
+                "information": search_response,
+                "audit_text": audit_text
             }
         )
 

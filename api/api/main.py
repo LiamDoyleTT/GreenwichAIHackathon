@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from api.chat.chat_handler import ChatHandler
 from api.enrich.audio_converter import AudioConverter
 from api.enrich.audio_transcriber import AudioTranscriber
+from api.enrich.audit_processor import AuditProcessor
 
 dotenv.load_dotenv()
 
@@ -27,6 +28,30 @@ class ProcessResponse(BaseModel):
 async def process(request: ProcessRequest) -> ProcessResponse:
     response_content = str(chat_handler.get_chat_response(request.body).content)
     return ProcessResponse(response=response_content)
+
+@app.post(path="/api/process-audit-file")
+async def process_audit_file(request: UploadFile) -> ProcessResponse:
+    # write the audit file to disk
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+
+    try:
+        temp_file.write(await request.read())
+        temp_file.close()
+
+        # Process the audit file
+        AuditProcessor.extract_audit_text(temp_file.name)
+
+        # Return a success response
+        return ProcessResponse(response="Audit file processed successfully ✅")
+    finally:
+        if os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
+    
+    return True
+
+@app.post(path="/api/process-doc-file")
+async def process_doc_file(request: UploadFile) -> ProcessResponse:
+    return True
 
 @app.post(path="/api/process-audio-file")
 async def process_audio_file(request: UploadFile) -> ProcessResponse:
