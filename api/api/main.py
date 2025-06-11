@@ -56,7 +56,7 @@ async def process_audio_file(request: UploadFile) -> ProcessResponse:
 
         # Uncomment to create a speech synthesizer using the default speaker as audio output.
 
-        #speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
-        #speech_synthesizer.speak_text_async(response_content).get()
+        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
+        speech_synthesizer.speak_text_async(response_content).get()
 
         return ProcessResponse(response=response_content)
