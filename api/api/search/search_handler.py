@@ -60,7 +60,6 @@ class SearchHandler:
         if not docs:
             return (
                 "I'm sorry, I couldn't find any relevant information. "
-                "You can contact the council at 020 8921 4661 or email contact.centre@royalgreenwich.gov.uk for help."
             )
 
         # Combine top 3 results
