@@ -55,21 +55,22 @@ class ChatHandler:
         return messages
 
     def get_chat_response(self, input_text):
-
-        greetings = ["hi", "hello", "hey", "hiya", "good morning", "good afternoon"]
-        thanks = ["thanks", "thank you", "cheers", "nice one", "much appreciated"]
-        goodbyes = ["bye", "goodbye", "see you", "see ya"]
-
-        input_lower = input_text.strip().lower()
-
-        if any(greet in input_lower for greet in greetings):
-            return SimpleNamespace(content="Hi there! How can I help you today with your bin collections?")
-
-        if any(thank in input_lower for thank in thanks):
-            return SimpleNamespace(content="No problem, if you have any more questions let me know!")
         
-        if any(bye in input_lower for bye in goodbyes):
-            return SimpleNamespace(content="Goodbye! Thanks for your time.")
+        # greetings = ["hi", "hello", "hey", "hiya", "good morning", "good afternoon"]
+        # thanks = ["thanks", "thank you", "cheers", "nice one", "much appreciated"]
+        # goodbyes = ["bye", "goodbye", "see you", "see ya"]
+
+        # input_lower = input_text.strip().lower()
+
+        # if any(greet in input_lower for greet in greetings):
+            # return SimpleNamespace(content="Hi there! How can I help you today with your bin collections?")
+
+        #if any(thank in input_lower for thank in thanks):
+            #return SimpleNamespace(content="No problem, if you have any more questions let me know!")
+        
+        #if any(bye in input_lower for bye in goodbyes):
+            #return SimpleNamespace(content="Goodbye! Thanks for your time.")
+
 
         messages = self.parse_conversation(input_text)
         search_response = search_handler.get_query_response(input_text)
@@ -80,7 +81,7 @@ class ChatHandler:
                 (
                     "system",
                     """You are a bot for extracting the customer postcode from previous messages in a customer service conversation with a user.
-                    The postcode format should be between 5 and 7 characters long and contain a space. e,.g. "AB12 3CD".
+                    The postcode format should be between 5 and 7 characters long and contain a space. e.g. "AB12 3CD".
                     If you cannot find a postcode in the conversation, respond with exactly the following phrase "No postcode found"
                     Once you find a postcode, respond with the postcode only.
                     """,
@@ -99,7 +100,12 @@ class ChatHandler:
                 [
                     (
                         "system",
-                        """You are a sympathatic assistant that is responsible for deciding if its a missed bin query and if it is then ask for the full postcode.                        """,
+                        """You are an experienced and efficient customer service agent; you are answering calls to customers about missed bin collections on behalf of the Royal Borough of Greenwich.  
+                        Your only role is deciding if the query is a missed bin query. If it is, then you need to ask questions to identify the customers' full postcode e.g. AB12 3CD 
+                        You do not deal with missed communal bin collection or missing bins. If the customer mentions anything other than missed bin collections, then ask them if they would like to be routed through to a specialist customer service agent.
+                        When starting the conversation, give the caller a hello and welcome to Royal Greenwich and an introduction with your name, Richard.
+                        If you are unclear of what the customers' request is, then ask them politely how you can help them. 
+                        Keep responses to short sentences and only ask one question at a time and only give the caller at most one action per response. """,
                     )
                 ] + messages
             )
@@ -107,8 +113,7 @@ class ChatHandler:
             chain = prompt | self.llm
             response = chain.invoke(
                 {
-                    "input": input_text,
-                    "information": search_response
+                    "input": messages
                 }
             )
 

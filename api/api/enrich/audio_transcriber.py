@@ -44,6 +44,6 @@ class AudioTranscriber:
         
         # wired_translated = speech_recognition_result.text+" Please answer only in the language with language code "+random.choice(languages_codes)
             
-        wired_translated = speech_recognition_result.text+" Please answer only in the language with language code "+detectedSrcLang
+        wired_translated = speech_recognition_result.text+". In your response, please respond entirely in the following language : " + detectedSrcLang
             
         return speech_recognition_result.text, detectedSrcLang, wired_translated
