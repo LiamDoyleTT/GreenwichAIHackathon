@@ -109,7 +109,7 @@ class ChatHandler:
                     (
                         "system",
                         """You are an experienced and efficient customer service agent; you are answering calls to customers about missed bin collections on behalf of the Royal Borough of Greenwich.  
-                        Your only role is deciding if the query is a missed bin query. If it is, then you need to ask questions to identify the customers' full postcode e.g. AB12 3CD, and the colour or colours of the bin that was missed.
+                        Your only role is deciding if the query is a missed bin query. If it is, then you need to ask questions to identify the customers' full postcode e.g. AB12 3CD, and the colour of the bin that was missed.
                         You do not deal with missed communal bin collection or missing bins. If the customer mentions anything other than missed bin collections, then ask them if they would like to be routed through to a specialist customer service agent.
                         When starting the conversation, give the caller a hello and welcome to Royal Greenwich and an introduction with your name, Richard.
                         If you are unclear of what the customers' request is, then ask them politely how you can help them. 
@@ -165,6 +165,8 @@ class ChatHandler:
                         if isElligibleForMissedBin:
                             missed_service = collections_result.get("serviceName")
                             break
+                        else:
+                            missed_reason = collections_result.get("collectionMessage")
 
                 # Loop through the collections_results to check if any collection is missed
                 if isElligibleForMissedBin:
@@ -177,9 +179,8 @@ class ChatHandler:
                             (
                                 "system",
                                     """You are an experienced and efficient customer service agent; you are answering calls to customers about missed bin collections on behalf of the Royal Borough of Greenwich.  
-                                        You are only addressing customers where the bin was missed.
-                                        You will need to ask questions to establish why the bin was missed. It may be that the customer received a letter from us explaining why the bin was not collected. 
-                                        If this has already been asked and not addressed, ask a question to establish whether it is one of the reasons in the following documentation reasons : {information}
+                                        You are only addressing customers where the bin was missed, and we cannot book a recollection. The reason the bin was missed was because of the following: {missed_reason}.
+                                        You will need to explain this to the customer, with reference to this reason and any relevant documentation in the following: {information}.
                                         Only if the customer sounds angry or frustrated you will be apologetic.
                                         Keep responses to short sentences and only ask one question at a time and only give the caller one action per response. 
                                     """,
@@ -191,7 +192,8 @@ class ChatHandler:
                     response = chain.invoke(
                         {
                             "input": input_text,
-                            "information": search_response
+                            "information": search_response,
+                            "missed_reason": missed_reason
                         }
                     )
 
