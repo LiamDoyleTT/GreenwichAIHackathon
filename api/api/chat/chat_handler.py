@@ -3,6 +3,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from api.search.search_handler import SearchHandler
 import json
+from types import SimpleNamespace
 
 search_handler = SearchHandler()
 
@@ -42,6 +43,21 @@ class ChatHandler:
         return messages
 
     def get_chat_response(self, input_text):
+
+        greetings = ["hi", "hello", "hey", "hiya", "good morning", "good afternoon"]
+        thanks = ["thanks", "thank you", "cheers", "nice one", "much appreciated"]
+        goodbyes = ["bye", "goodbye", "see you", "see ya"]
+
+        input_lower = input_text.strip().lower()
+
+        if any(greet in input_lower for greet in greetings):
+            return SimpleNamespace(content="Hi there! How can I help you today with your bin collections?")
+
+        if any(thank in input_lower for thank in thanks):
+            return SimpleNamespace(content="No problem, if you have any more questions let me know!")
+        
+        if any(bye in input_lower for bye in goodbyes):
+            return SimpleNamespace(content="Goodbye! Thanks for your time.")
 
         messages = self.parse_conversation(input_text)
         search_response = search_handler.get_query_response(input_text)
