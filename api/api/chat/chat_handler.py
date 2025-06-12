@@ -16,13 +16,22 @@ class ChatHandler:
             azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
         )
     
-    def trigger_api_request(self,url, payload):
+    def trigger_api_post_request(self,url, payload):
         headers = {
             "api-key": os.environ["AZURE_RBG_ADDRESS_KEY"],
             "Ocp-Apim-Subscription-Key": os.environ["AZURE_RBG_APIM_WS_KEY"],
             "Content-Type": "application/json"
         }
         response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  # Raises an error for bad responses (4xx/5xx)
+        return response.json()
+    
+    def trigger_api_get_request(self,url):
+        headers = {
+            "Ocp-Apim-Subscription-Key": os.environ["AZURE_RBG_APIM_WS_KEY"],
+            "Content-Type": "application/json"
+        }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()  # Raises an error for bad responses (4xx/5xx)
         return response.json()
     
@@ -56,20 +65,20 @@ class ChatHandler:
 
     def get_chat_response(self, input_text):
 
-        greetings = ["hi", "hello", "hey", "hiya", "good morning", "good afternoon"]
-        thanks = ["thanks", "thank you", "cheers", "nice one", "much appreciated"]
-        goodbyes = ["bye", "goodbye", "see you", "see ya"]
+        # greetings = ["hi", "hello", "hey", "hiya", "good morning", "good afternoon"]
+        # thanks = ["thanks", "thank you", "cheers", "nice one", "much appreciated"]
+        # goodbyes = ["bye", "goodbye", "see you", "see ya"]
 
-        input_lower = input_text.strip().lower()
+        # input_lower = input_text.strip().lower()
 
-        if any(greet in input_lower for greet in greetings):
-            return SimpleNamespace(content="Hi there! How can I help you today with your bin collections?")
+        # if any(greet in input_lower for greet in greetings):
+        #     return SimpleNamespace(content="Hi there! How can I help you today with your bin collections?")
 
-        if any(thank in input_lower for thank in thanks):
-            return SimpleNamespace(content="No problem, if you have any more questions let me know!")
+        # if any(thank in input_lower for thank in thanks):
+        #     return SimpleNamespace(content="No problem, if you have any more questions let me know!")
         
-        if any(bye in input_lower for bye in goodbyes):
-            return SimpleNamespace(content="Goodbye! Thanks for your time.")
+        # if any(bye in input_lower for bye in goodbyes):
+        #     return SimpleNamespace(content="Goodbye! Thanks for your time.")
 
         messages = self.parse_conversation(input_text)
         search_response = search_handler.get_query_response(input_text)
@@ -123,7 +132,7 @@ class ChatHandler:
                 "select": "*",
                 "top": 1
             }
-            result = self.trigger_api_request(url, payload)
+            result = self.trigger_api_post_request(url, payload)
             addresses = result.get("value", [])
             if addresses:
                 first_address = addresses[0]
@@ -134,44 +143,48 @@ class ChatHandler:
                 print("Postcode:", postcode)
                 print("uprn:", uprn)
                 print("usrn:", usrn)
-                
+
                 
                 # if we have uprn and usrn, call Whitespace API using APIM for missed bin elligibility
-                # url = os.environ["AZURE_RBG_APIM_WS_ENDPOINT"]
-                # url += "/api/MissedCollection/GetMissedCollectionEligibility/"
-                # url += uprn + "/"
-                # url += usrn
-                # print("url:", url)
-                # result = self.trigger_api_request(url, payload)
-                # print("url:", url)
-                # isElligible = result.get("value", [])
+                url = os.environ["AZURE_RBG_APIM_WS_ENDPOINT"]
+                #url += "/api/MissedCollection/GetMissedCollectionEligibility/"
+                url += uprn + "/"
+                url += usrn
+                print("url:", url)
 
-                # if isElligible:
-                #     response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
-                #     return response
-                # else:
+                collections_results = self.trigger_api_get_request(url)
+                # collections_results = result.get()
+                isElligibleForMissedBin = False
+
+                if collections_results:
+                    collections_result = collections_results[1]
+                    isElligibleForMissedBin = collections_result.get("workSheetCanBeCreated")
                 
-                #     prompt = ChatPromptTemplate.from_messages(
-                #         [
-                #             (
-                #                 "system",
-                #                     """You are a sympathatic assistant that is responsible for addressing queries about bin collections but we could not verify from the given postcode.
-                #                     This postcode might not be in Greenwich or you verify the postcode and try again
-                #                     """,
-                #             )
-                #         ] + messages
-                #     )
+                if isElligibleForMissedBin:
+                    response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
+                    return response
+                else:
+                    # agent for responding to failed postcode lookup
+                    prompt = ChatPromptTemplate.from_messages(
+                        [
+                            (
+                                "system",
+                                    """You are a sympathatic assistant that is responsible for addressing queries about missed bin collections but is not elligible for reporting missed bin.
+                                    
+                                    """,
+                            )
+                        ] + messages
+                    )
 
-                #     chain = prompt | self.llm
-                #     response = chain.invoke(
-                #         {
-                #             "input": input_text,
-                #             "information": search_response
-                #         }
-                #     )
+                    chain = prompt | self.llm
+                    response = chain.invoke(
+                        {
+                            "input": input_text,
+                            "information": search_response
+                        }
+                    )
 
-                response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
-                return response
+                    return response.content
             else:
                 print("No addresses found.")
                 response = "No postcode found. This postcode might not be in Greenwich or please verify the postcode again ."
