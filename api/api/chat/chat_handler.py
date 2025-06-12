@@ -1,4 +1,6 @@
 import os
+import requests
+
 from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from api.search.search_handler import SearchHandler
@@ -13,6 +15,16 @@ class ChatHandler:
         self.llm = AzureChatOpenAI(
             azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
         )
+    
+    def trigger_api_request(self,url, payload):
+        headers = {
+            "api-key": os.environ["AZURE_RBG_ADDRESS_KEY"],
+            "Ocp-Apim-Subscription-Key": os.environ["AZURE_RBG_APIM_WS_KEY"],
+            "Content-Type": "application/json"
+        }
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  # Raises an error for bad responses (4xx/5xx)
+        return response.json()
     
     def parse_conversation(self, conversation_str):
         messages = []
@@ -61,23 +73,108 @@ class ChatHandler:
 
         messages = self.parse_conversation(input_text)
         search_response = search_handler.get_query_response(input_text)
+        
+        # bot for extracting the postcode
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
                     "system",
-                    """You are a helpful assistant that is responsible for addressing queries about bin collections.  
-                    Respond using only the information in the following bin collection rules: {information}           
+                    """You are a bot for extracting the customer postcode from previous messages in a customer service conversation with a user.
+                    The postcode format should be between 5 and 7 characters long and contain a space. e,.g. "AB12 3CD".
+                    If you cannot find a postcode in the conversation, respond with exactly the following phrase "No postcode found"
+                    Once you find a postcode, respond with the postcode only.
                     """,
                 )
             ] + messages
         )
-
         chain = prompt | self.llm
-        response = chain.invoke(
+        postcode_response = chain.invoke(
             {
-                "input": input_text,
-                "information": search_response
-            }
+                "input": input_text            }
         )
 
-        return response
+        # agent for pulling out the full postcode if not yet provided
+        if postcode_response.content == "No postcode found":
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        """You are a sympathatic assistant that is responsible for deciding if its a missed bin query and if it is then ask for the full postcode.                        """,
+                    )
+                ] + messages
+            )
+
+            chain = prompt | self.llm
+            response = chain.invoke(
+                {
+                    "input": input_text,
+                    "information": search_response
+                }
+            )
+
+            return response.content
+        else:
+            # agent for responding to the query with an API lookup
+
+            url = os.environ["AZURE_RBG_ADDRESS_ENDPOINT"]
+            payload = {
+                "search": postcode_response.content,
+                "suggesterName": "Full_Address",
+                "select": "*",
+                "top": 1
+            }
+            result = self.trigger_api_request(url, payload)
+            addresses = result.get("value", [])
+            if addresses:
+                first_address = addresses[0]
+                postcode = first_address.get("Postcode")
+                full_address = first_address.get("Full_Address")
+                uprn = first_address.get("RowKey")
+                usrn = first_address.get("USRN")
+                print("Postcode:", postcode)
+                print("uprn:", uprn)
+                print("usrn:", usrn)
+                
+                
+                # if we have uprn and usrn, call Whitespace API using APIM for missed bin elligibility
+                # url = os.environ["AZURE_RBG_APIM_WS_ENDPOINT"]
+                # url += "/api/MissedCollection/GetMissedCollectionEligibility/"
+                # url += uprn + "/"
+                # url += usrn
+                # print("url:", url)
+                # result = self.trigger_api_request(url, payload)
+                # print("url:", url)
+                # isElligible = result.get("value", [])
+
+                # if isElligible:
+                #     response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
+                #     return response
+                # else:
+                
+                #     prompt = ChatPromptTemplate.from_messages(
+                #         [
+                #             (
+                #                 "system",
+                #                     """You are a sympathatic assistant that is responsible for addressing queries about bin collections but we could not verify from the given postcode.
+                #                     This postcode might not be in Greenwich or you verify the postcode and try again
+                #                     """,
+                #             )
+                #         ] + messages
+                #     )
+
+                #     chain = prompt | self.llm
+                #     response = chain.invoke(
+                #         {
+                #             "input": input_text,
+                #             "information": search_response
+                #         }
+                #     )
+
+                response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
+                return response
+            else:
+                print("No addresses found.")
+                response = "No postcode found. This postcode might not be in Greenwich or please verify the postcode again ."
+                return response
+            
+        # return response

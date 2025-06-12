@@ -35,7 +35,7 @@ audio_transcriber = AudioTranscriber(speech_config)
 
 @app.post("/api/process")
 async def process(request: ProcessRequest) -> ProcessResponse:
-    response_content = str(chat_handler.get_chat_response(request.body).content)
+    response_content = str(chat_handler.get_chat_response(request.body))
     return ProcessResponse(response=response_content)
 
 @app.post(path="/api/process-audio-file")
@@ -51,7 +51,7 @@ async def process_audio_file(request: UploadFile) -> ProcessResponse:
 
         # Send to chat handler
         response_content = str(
-            chat_handler.get_chat_response(wired_translated).content
+            chat_handler.get_chat_response(wired_translated)
         )
 
         print(type(transcribed_audio))
