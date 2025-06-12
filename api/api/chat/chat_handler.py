@@ -143,7 +143,6 @@ class ChatHandler:
                 print("Postcode:", postcode)
                 print("uprn:", uprn)
                 print("usrn:", usrn)
-
                 
                 # if we have uprn and usrn, call Whitespace API using APIM for missed bin elligibility
                 url = os.environ["AZURE_RBG_APIM_WS_ENDPOINT"]
@@ -153,15 +152,19 @@ class ChatHandler:
                 print("url:", url)
 
                 collections_results = self.trigger_api_get_request(url)
-                # collections_results = result.get()
                 isElligibleForMissedBin = False
+                missed_service = None
 
                 if collections_results:
-                    collections_result = collections_results[1]
-                    isElligibleForMissedBin = collections_result.get("workSheetCanBeCreated")
-                
+                    for collections_result in collections_results:
+                        isElligibleForMissedBin = collections_result.get("workSheetCanBeCreated")
+                        if isElligibleForMissedBin:
+                            missed_service = collections_result.get("serviceName")
+                            break
+
+                # Loop through the collections_results to check if any collection is missed
                 if isElligibleForMissedBin:
-                    response = "You are eligible for a missed bin collection. Please contact the council to arrange this."
+                    response = "You are eligible for a missed " + missed_service + ". Please contact the council to arrange this."
                     return response
                 else:
                     # agent for responding to failed postcode lookup
