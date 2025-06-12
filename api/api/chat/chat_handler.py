@@ -79,27 +79,28 @@ class ChatHandler:
             [
                 (
                     "system",
-                    """You are a bot for extracting the customer postcode from previous messages in a customer service conversation with a user.
+                    """You are a bot for extracting the customer's postcode and house number (or name) from previous messages in a customer service conversation with a user.
                     The postcode format should be between 5 and 7 characters long and contain a space. e,.g. "AB12 3CD".
-                    If you cannot find a postcode in the conversation, respond with exactly the following phrase "No postcode found"
-                    Once you find a postcode, respond with the postcode only.
+                    The house name/number should either be an integer, or at least 1 word.
+                    Respond in JSON format (no newlines or whitespace) with an object containing "postcode", "name" and "number" properties.
+                    If any property is not found, set the value for that property to 0.
                     """,
                 )
             ] + messages
         )
         chain = prompt | self.llm
         postcode_response = chain.invoke(
-            {
-                "input": input_text            }
+            {"input": input_text}
         )
 
         # agent for pulling out the full postcode if not yet provided
-        if postcode_response.content == "No postcode found":
+        address_details = json.loads(postcode_response.content)
+        if address_details['postcode'] == 0 or (address_details['name'] == 0 and address_details['number'] == 0):
             prompt = ChatPromptTemplate.from_messages(
                 [
                     (
                         "system",
-                        """You are a sympathatic assistant that is responsible for deciding if its a missed bin query and if it is then ask for the full postcode.                        """,
+                        """You are a sympathatic assistant that is responsible for deciding if its a missed bin query and if it is then ask for the full postcode and house number or name.                        """,
                     )
                 ] + messages
             )
@@ -115,13 +116,14 @@ class ChatHandler:
             return response.content
         else:
             # agent for responding to the query with an API lookup
+            # - postcode and house number have been provided
 
             url = os.environ["AZURE_RBG_ADDRESS_ENDPOINT"]
             payload = {
-                "search": postcode_response.content,
+                "search": address_details['postcode'],
                 "suggesterName": "Full_Address",
                 "select": "*",
-                "top": 1
+                "top": 50
             }
             result = self.trigger_api_request(url, payload)
             addresses = result.get("value", [])
@@ -134,7 +136,6 @@ class ChatHandler:
                 print("Postcode:", postcode)
                 print("uprn:", uprn)
                 print("usrn:", usrn)
-                
                 
                 # if we have uprn and usrn, call Whitespace API using APIM for missed bin elligibility
                 # url = os.environ["AZURE_RBG_APIM_WS_ENDPOINT"]
@@ -176,5 +177,3 @@ class ChatHandler:
                 print("No addresses found.")
                 response = "No postcode found. This postcode might not be in Greenwich or please verify the postcode again ."
                 return response
-            
-        # return response
