@@ -68,4 +68,4 @@ class SearchHandler:
         return context
 
 # Uncomment this to create or add to the vector index in AI search
-# SearchHandler().create_vector_index()
+SearchHandler().create_vector_index()
