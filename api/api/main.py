@@ -42,7 +42,7 @@ async def process(request: ProcessRequest) -> ProcessResponse:
 async def process_audio_file(request: UploadFile) -> ProcessResponse:
                 
         # Transcribe audio
-        transcribed_audio, detected_language, wired_translated = await audio_transcriber.transcribe_from_audio()
+        transcribed_audio, detected_language = await audio_transcriber.transcribe_from_audio()
 
         if len(transcribed_audio) == 0:
             raise HTTPException(
@@ -51,7 +51,7 @@ async def process_audio_file(request: UploadFile) -> ProcessResponse:
 
         # Send to chat handler
         response_content = str(
-            chat_handler.get_chat_response(wired_translated).content
+            chat_handler.get_chat_response(transcribed_audio).content
         )
 
         print(type(transcribed_audio))
