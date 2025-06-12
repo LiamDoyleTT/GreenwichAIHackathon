@@ -9,6 +9,9 @@ from api.enrich.audio_converter import AudioConverter
 from api.enrich.audio_transcriber import AudioTranscriber
 import azure.cognitiveservices.speech as speechsdk
 
+import json
+import re
+
 dotenv.load_dotenv()
 
 app = FastAPI()
@@ -39,7 +42,7 @@ async def process(request: ProcessRequest) -> ProcessResponse:
 async def process_audio_file(request: UploadFile) -> ProcessResponse:
                 
         # Transcribe audio
-        transcribed_audio = await audio_transcriber.transcribe_from_audio()
+        transcribed_audio, detected_language, wired_translated = await audio_transcriber.transcribe_from_audio()
 
         if len(transcribed_audio) == 0:
             raise HTTPException(
@@ -48,12 +51,17 @@ async def process_audio_file(request: UploadFile) -> ProcessResponse:
 
         # Send to chat handler
         response_content = str(
-            chat_handler.get_chat_response(transcribed_audio)
+            chat_handler.get_chat_response(wired_translated)
         )
 
+        print(type(transcribed_audio))
         # Set the voice name, refer to https://aka.ms/speech/voices/neural for full list.
-        speech_config.speech_synthesis_voice_name = "en-US-AriaNeural"
-
+        if  detected_language == "en-GB" or detected_language == "en-IN":
+            speech_config.speech_synthesis_voice_name = "en-GB-BellaNeural"
+        elif detected_language == "it-IT":
+            speech_config.speech_synthesis_voice_name = "it-IT-DiegoNeural"
+        elif detected_language == "pl-PL":
+            speech_config.speech_synthesis_voice_name = "pl-PL-MarekNeural"
         # Uncomment to create a speech synthesizer using the default speaker as audio output.
 
         speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
