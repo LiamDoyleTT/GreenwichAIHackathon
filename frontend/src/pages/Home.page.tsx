@@ -74,15 +74,39 @@ export function HomePage() {
   };
 
   const audioFileUploaded = (file: File | null) => {
-    const updatedMessages = [...messages, { message: '🎵 Audio Uploaded...', role: 'person' as const }];
-    setMessages(updatedMessages);
     setLoading(true);
-
-    const formData = new FormData();
-    formData.append('request', file);
-    formData.append('conversation', getConversationString(updatedMessages));
-
-    sendChatRequest('/api/process-audio-file', {}, formData);
+    
+    // Show temporary loading message
+    const tempMessages = [...messages, { message: '🎵 Audio Uploaded...', role: 'person' as const }];
+    setMessages(tempMessages);
+    
+    fetch('/api/process-audio-file', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        body: getConversationString(messages)
+      })
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        return Promise.reject(response);
+      })
+      .then((data) => {
+        // Replace the temporary message with the first output as user input
+        // and add the second output as bot response
+        const updatedMessages = [
+          ...messages,
+          { message: data.transcribed_audio, role: 'person' },
+          { message: data.response, role: 'bot' }
+        ];
+        setMessages(updatedMessages);
+        setLoading(false);
+      })
+      .catch(async (error) => handleError(error));
   };
 
   const clearChatHistory = () => setMessages([]);

@@ -81,7 +81,7 @@ class ChatHandler:
         #     return SimpleNamespace(content="Goodbye! Thanks for your time.")
 
         messages = self.parse_conversation(input_text)
-        search_response = search_handler.get_query_response(input_text)
+        search_response = search_handler.get_query_response(str(input_text))
         
         # bot for extracting the postcode
         prompt = ChatPromptTemplate.from_messages(
